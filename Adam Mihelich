@@ -1,0 +1,156 @@
+mkdir league-management && cd league-management
+mkdir backend && cd backend
+npm init -y
+npm install express cors body-parser
+mkdir ../frontend
+const express = require("express");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+let teams = [];
+let players = [];
+let stats = [];
+let schedule = [];
+
+// API to add teams
+app.post("/teams", (req, res) => {
+  const { name, color } = req.body;
+  teams.push({ id: teams.length + 1, name, color, wins: 0, losses: 0, pointDiff: 0 });
+  res.status(201).send("Team added!");
+});
+
+// API to add players
+app.post("/players", (req, res) => {
+  const { name, teamId } = req.body;
+  players.push({ id: players.length + 1, name, teamId, stats: {} });
+  res.status(201).send("Player added!");
+});
+
+// API to add stats
+app.post("/stats", (req, res) => {
+  const { statName } = req.body;
+  stats.push(statName);
+  res.status(201).send("Stat added!");
+});
+
+// API to get standings
+app.get("/standings", (req, res) => {
+  const standings = teams.map(team => ({
+    ...team,
+    wins: players.filter(p => p.teamId === team.id && p.stats.wins).length,
+    losses: players.filter(p => p.teamId === team.id && p.stats.losses).length,
+    pointDiff: Math.random() * 100 // Mock point diff for demo
+  }));
+  res.json(standings);
+});
+
+// Start server
+app.listen(3001, () => console.log("Backend running on http://localhost:3001"));
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>League Manager</title>
+  <style>
+    body { background: white; color: #333; font-family: Arial, sans-serif; }
+    h1 { color: red; font-size: 2em; text-align: center; }
+    .tab { margin: 10px; padding: 10px; }
+    input, button { margin: 5px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>League Manager</h1>
+  <div class="tab">
+    <h2>Add Team</h2>
+    <input type="text" id="teamName" placeholder="Team Name" />
+    <input type="color" id="teamColor" placeholder="Team Color" />
+    <button onclick="addTeam()">Add Team</button>
+    <h3>Teams:</h3>
+    <ul id="teamList"></ul>
+  </div>
+
+  <div class="tab">
+    <h2>Add Player</h2>
+    <input type="text" id="playerName" placeholder="Player Name" />
+    <select id="teamSelect"></select>
+    <button onclick="addPlayer()">Add Player</button>
+    <h3>Players:</h3>
+    <ul id="playerList"></ul>
+  </div>
+
+  <div class="tab">
+    <h2>Stats</h2>
+    <input type="text" id="statName" placeholder="Stat Name" />
+    <button onclick="addStat()">Add Stat</button>
+    <h3>Stats:</h3>
+    <ul id="statsList"></ul>
+  </div>
+
+  <script>
+    const API_URL = "http://localhost:3001";
+    const fetchData = async (url, method = "GET", body = null) => {
+      const options = { method, headers: { "Content-Type": "application/json" } };
+      if (body) options.body = JSON.stringify(body);
+      const response = await fetch(`${API_URL}${url}`, options);
+      return response.json();
+    };
+
+    // Add team
+    async function addTeam() {
+      const name = document.getElementById("teamName").value;
+      const color = document.getElementById("teamColor").value;
+      await fetchData("/teams", "POST", { name, color });
+      listTeams();
+    }
+
+    // Add player
+    async function addPlayer() {
+      const name = document.getElementById("playerName").value;
+      const teamId = document.getElementById("teamSelect").value;
+      await fetchData("/players", "POST", { name, teamId: Number(teamId) });
+      listPlayers();
+    }
+
+    // Add stat
+    async function addStat() {
+      const statName = document.getElementById("statName").value;
+      await fetchData("/stats", "POST", { statName });
+      listStats();
+    }
+
+    // List teams
+    async function listTeams() {
+      const teams = await fetchData("/teams");
+      document.getElementById("teamList").innerHTML = teams.map(t => `<li>${t.name}</li>`).join("");
+      const teamSelect = document.getElementById("teamSelect");
+      teamSelect.innerHTML = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join("");
+    }
+
+    // List players
+    async function listPlayers() {
+      const players = await fetchData("/players");
+      document.getElementById("playerList").innerHTML = players.map(p => `<li>${p.name}</li>`).join("");
+    }
+
+    // List stats
+    async function listStats() {
+      const stats = await fetchData("/stats");
+      document.getElementById("statsList").innerHTML = stats.map(s => `<li>${s}</li>`).join("");
+    }
+
+    // Initial setup
+    listTeams();
+    listPlayers();
+    listStats();
+  </script>
+</body>
+</html>
+cd backend
+node index.js
